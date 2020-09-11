@@ -16,7 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
-from search.views import oauth_callback, authorize, VideoViewset, fetch_videos_task, UserViewset 
+from search.views import oauth_callback, authorize, VideoViewset, fetch_videos_task, UserViewset
 
 urlpatterns = [
     path('admin/', admin.site.urls),

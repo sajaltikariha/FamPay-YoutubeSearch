@@ -91,7 +91,7 @@ def oauth_callback(request):
         order = "date",
         type = "video",
     )
-    response = request.execute()[:5]
+    response = request.execute()
     for item in response['items']:
         video = Video()
         video.video_id = item['id']['videoId']
@@ -115,26 +115,45 @@ def authorize(request):
         access_type = 'offline',
         include_granted_scopes = 'true'
     )
-
     return HttpResponseRedirect(authorization_url)
 
 """
-Latest videos api-call component
-"""  
+User info api-call component (Just for testing purpose)
+"""
+class UserViewset(APIView):
+    serializer_class = UserSerializer
+
+    def get(self, request):
+        users = User.objects.all().order_by("id") 
+        serializer = self.serializer_class(users, many = True)
+        return JsonResponse(serializer.data, safe = False)
+
+"""
+Latest videos api-call component with search query option
+"""
 class VideoViewset(APIView):
-    queryset = Video.objects.order_by("-published_at")
     serializer_class = VideoSerializer
     pagination_class = api_settings.DEFAULT_PAGINATION_CLASS
 
-    """
-    request handler function 
-    """
     def get(self, request):
-        page = self.paginate_queryset(self.queryset)
+        search_query = self.request.GET.get('query')
+        print (1, search_query)
+        videos_list = Video.objects.order_by("-published_at")
+        if search_query:
+            search_results = []
+            for video in videos_list:
+                title = video.title.lower()
+                description = video.description.lower()
+                if ((title.find(search_query.lower()) != -1) or (description.find(search_query.lower()) != -1)):
+                    search_results.append(video)
+            page = self.paginate_queryset(search_results)      
+        else:
+            page = self.paginate_queryset(videos_list)
+        
         if page is not None:
-            serializer = self.serializer_class(page, many = True)
+            serializer = self.serializer_class(page, many = True) 
             return JsonResponse(serializer.data, safe = False)
-    
+            
     @property
     def paginator(self):
         """
@@ -154,62 +173,6 @@ class VideoViewset(APIView):
         if self.paginator is None:
             return None
         return self.paginator.paginate_queryset(queryset, self.request, view = self)
-
-"""
-User info api-call component (Just for testing purpose)
-"""
-class UserViewset(APIView):
-    serializer_class = UserSerializer
-
-    def get(self, request):
-        users = User.objects.all().order_by("id") 
-        serializer = self.serializer_class(users, many = True)
-        return JsonResponse(serializer.data, safe = False)
-
-"""
-Search videos api-call component
-"""
-class SearchViewset(APIView):
-    serializer_class = VideoSerializer
-    pagination_class = api_settings.DEFAULT_PAGINATION_CLASS
-
-    def get(self, request):
-        search_query = self.request.GET.get('query')
-        videos_list = Video.objects.order_by("-published_at")
-        if search_query:
-            search_results = Video.objects.none()
-            for video in videos_list:
-                title = video.title
-                description = video.description
-                if ((title.find(search_query) != -1) or (description.find(search_query) != -1)):
-                    search_results.append(video)
-            page = self.paginate_queryset(search_results)      
-        else:
-            page = self.paginate_queryset(videos_list)
-        
-        if page is not None:
-            serializer = self.serializer_class(page, many = True) 
-            return JsonResponse(serializer.data, safe = False)
-            
-        @property
-        def paginator(self):
-            """
-            The paginator instance associated with the view, or `None`.
-            """
-            if not hasattr(self, '_paginator'):
-                if self.pagination_class is None:
-                    self._paginator = None
-                else:
-                    self._paginator = self.pagination_class()
-            return self._paginator
-
-        def paginate_queryset(self, queryset):
-            """
-            Return a single page of results, or `None` if pagination is disabled.
-            """
-            if self.paginator is None:
-                return None
-            return self.paginator.paginate_queryset(queryset, self.request, view = self)
 
 
 
