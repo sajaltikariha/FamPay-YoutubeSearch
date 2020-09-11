@@ -14,8 +14,15 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+
+from search.views import oauth_callback, authorize, VideoViewset, fetch_videos_task, UserViewset 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('authorize', authorize),
+    path('oauth-callback', oauth_callback),
+    path('api/videos', VideoViewset.as_view()),
+    path('api/users', UserViewset.as_view()),
+    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
 ]
