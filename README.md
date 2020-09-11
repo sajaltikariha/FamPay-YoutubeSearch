@@ -21,7 +21,8 @@ A. If your system has docker and docker-compose already installed run the follow
 
 (2) Enter docker up after build command to get container running: sudo docker-compose up -d --build 
 
-(3) This must create a URL that can be copied to browser to inspect the app exposed at port 8000 or you can directly use "http://localhost:8000". 
+(3) This must create a URL that can be copied to browser to inspect the app exposed at port 8000. Now go to "http://localhost:8000". 
+(This might lead to SSL_ERROR_RX_RECORD_TOO_LONG error in firefox due to long response time, try changing "https" in the current url to "http")
 
 (4) Now this will ask for user permissions, once allowed it will redirect a callback to "http://localhost:8000/oauth-callback" which sends a request to oauth2.0 server, where authentication code is exchanged with access and refresh tokens. The received credentials are stored in local User DB and used further to carry out background YT API fetch every 10 secs and store the obtained data in local Video DB. 
 
