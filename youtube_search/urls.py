@@ -20,7 +20,7 @@ from search.views import oauth_callback, authorize, VideoViewset, fetch_videos_t
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('authorize', authorize),
+    path('', authorize),
     path('oauth-callback', oauth_callback),
     path('api/videos', VideoViewset.as_view()),
     path('api/users', UserViewset.as_view()),
