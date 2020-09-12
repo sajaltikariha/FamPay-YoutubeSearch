@@ -12,7 +12,6 @@ import googleapiclient.errors
 import google.oauth2.credentials
 
 #imports for celery/bacground task execution
-import logging
 from youtube_search.celery import app
 
 #imports from db
@@ -21,12 +20,10 @@ from .models import Video, User
 #imports from serializer
 from .serializers import VideoSerializer, UserSerializer
 
-client_secrets_file = 'search/client_secret.json'
-scopes = ["https://www.googleapis.com/auth/youtube.force-ssl"]
-api_service_name = "youtube"
-api_version = "v3"
-
-HOSTNAME = 'https://dd91e1e366ad.ngrok.io'
+CLIENT_SECRETS_FILE = 'search/client_secret.json'
+SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl"]
+API_SERVICE_NAME = "youtube"
+API_VERSION = "v3"
 
 # Create your views here.
 
@@ -35,10 +32,9 @@ Background task to fetch latest videos every 10 seconds
 """
 @app.task
 def fetch_videos_task():
-    logging.debug("Reached Task")
     cred = User.objects.last()
     latest_video = Video.objects.order_by("-published_at").first()
-    CREDENTIALS = google.oauth2.credentials.Credentials(
+    credentials = google.oauth2.credentials.Credentials(
         token = cred.token,
         refresh_token = cred.refresh_token,
         token_uri = cred.token_uri, 
@@ -47,7 +43,7 @@ def fetch_videos_task():
         scopes = cred.scopes,
     )
     youtube = googleapiclient.discovery.build(
-        api_service_name, api_version, credentials = CREDENTIALS)
+        API_SERVICE_NAME, API_VERSION, credentials = credentials)
     request = youtube.search().list(
         part = "snippet",
         order = "date",
@@ -71,27 +67,32 @@ O Auth 2.0 callback function
 """
 def oauth_callback(request):
     state = request.GET.get('state')
-    flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(client_secrets_file, scopes = scopes, state = state)
+    flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(CLIENT_SECRETS_FILE, scopes = SCOPES, state = state)
     flow.redirect_uri = "https://" + request.META.get('HTTP_HOST') + '/oauth-callback'
     url = "https://" + request.META.get('HTTP_HOST') + request.get_full_path()
     flow.fetch_token(authorization_response = url)
-    CREDENTIALS = flow.credentials # get required credentials 
+    credentials = flow.credentials # get required credentials 
     user = User()
-    user.token = CREDENTIALS.token
-    user.refresh_token = CREDENTIALS.refresh_token
-    user.token_uri = CREDENTIALS.token_uri
-    user.client_id = CREDENTIALS.client_id
-    user.client_secret = CREDENTIALS.client_secret
-    user.scopes = CREDENTIALS.scopes
+    user.token = credentials.token
+    user.refresh_token = credentials.refresh_token
+    user.token_uri = credentials.token_uri
+    user.client_id = credentials.client_id
+    user.client_secret = credentials.client_secret
+    user.scopes = credentials.scopes
     user.save()
+
+    """
+    Here first cached response is used just to check if we are getting a proper response or not (for testing purpose)
+    otherwise all the responses would be made in background only. 
+    """
     youtube = googleapiclient.discovery.build( 
-        api_service_name, api_version, credentials = CREDENTIALS)
+        API_SERVICE_NAME, API_VERSION, credentials = credentials)
     request = youtube.search().list(
         part = "snippet",
         order = "date",
         type = "video",
     )
-    response = request.execute()
+    response = request.execute()  
     for item in response['items']:
         video = Video()
         video.video_id = item['id']['videoId']
@@ -108,7 +109,7 @@ def oauth_callback(request):
 Authorization funtion
 """
 def authorize(request):
-    flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(client_secrets_file, scopes)
+    flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(CLIENT_SECRETS_FILE, SCOPES)
     flow.redirect_uri = "https://" + request.META.get('HTTP_HOST') + '/oauth-callback'
 
     authorization_url, state = flow.authorization_url(
@@ -137,7 +138,6 @@ class VideoViewset(APIView):
 
     def get(self, request):
         search_query = self.request.GET.get('query')
-        print (1, search_query)
         videos_list = Video.objects.order_by("-published_at")
         if search_query:
             search_results = []

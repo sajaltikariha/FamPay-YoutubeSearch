@@ -23,6 +23,6 @@ urlpatterns = [
     path('', authorize),
     path('oauth-callback', oauth_callback),
     path('api/videos', VideoViewset.as_view()),
-    path('api/users', UserViewset.as_view()),
+    # path('api/users', UserViewset.as_view()),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
 ]
